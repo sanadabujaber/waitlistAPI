@@ -6,7 +6,7 @@
   "scripts": {
     "build": "nest build",
     "dev": "PORT=3005 nest start --watch",
-    "start": "node dist/main"
+    "start": "node dist/main.js"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.15",
