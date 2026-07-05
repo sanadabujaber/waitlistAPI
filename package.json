@@ -2,7 +2,7 @@
   "name": "@sanad/waitlist-api",
   "version": "1.0.0",
   "private": true,
-  "description": "Standalone pre-launch Waitlist API — deployable independently of the main platform API.",
+  "description": "Standalone pre-launch Waitlist API \u2014 deployable independently of the main platform API.",
   "scripts": {
     "build": "prisma generate && nest build",
     "dev": "PORT=3005 nest start --watch",
@@ -33,5 +33,8 @@
     "husky": "^8.0.0",
     "prisma": "^5.22.0",
     "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }
