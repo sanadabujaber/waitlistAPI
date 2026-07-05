@@ -10,13 +10,14 @@ import { WaitlistController } from './waitlist/waitlist.controller';
 import { WaitlistService } from './waitlist/waitlist.service';
 import { WaitlistAdminController } from './waitlist/waitlist-admin.controller';
 import { WaitlistAdminService } from './waitlist/waitlist-admin.service';
+import { HealthController } from './health.controller';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, load: [config] }),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 60 }]),
   ],
-  controllers: [AuthController, WaitlistController, WaitlistAdminController],
+  controllers: [HealthController, AuthController, WaitlistController, WaitlistAdminController],
   providers: [
     PrismaService,
     SupabaseService,

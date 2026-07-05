@@ -1,0 +1,1622 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+enum UserStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum Locale {
+  AR
+  EN
+}
+
+enum CertificateCategory {
+  AI_ML
+  DEVELOPMENT
+  DESIGN
+  BUSINESS
+  SAP
+  CLOUD
+  OTHER
+}
+
+enum PublishStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ContentType {
+  PROJECT
+  ARTICLE
+  RESEARCH
+  SPEAKING_EVENT
+  COURSE
+}
+
+enum EventType {
+  TALK
+  PANEL
+  PODCAST
+  WORKSHOP
+  HACKATHON
+  MENTORSHIP
+  OTHER
+}
+
+enum MessageStatus {
+  UNREAD
+  READ
+  IN_PROGRESS
+  ARCHIVED
+  SPAM
+}
+
+enum NewsletterStatus {
+  PENDING
+  ACTIVE
+  UNSUBSCRIBED
+  BOUNCED
+}
+
+/// Admin outreach pipeline for waitlist subscribers.
+enum WaitlistOutreachStatus {
+  NEW
+  CONTACTED
+  INVITED
+  BETA_USER
+  LAUNCHED
+}
+
+enum CourseLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum CourseLanguage {
+  AR
+  EN
+  BOTH
+}
+
+enum LessonType {
+  VIDEO
+  ARTICLE
+  QUIZ
+}
+
+enum QuizQuestionType {
+  SINGLE_CHOICE
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  TEXT
+}
+
+enum ProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  REFUNDED
+  EXPIRED
+}
+
+enum PaymentProvider {
+  STRIPE
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+  CANCELLED
+}
+
+enum BillingInterval {
+  MONTHLY
+  YEARLY
+  LIFETIME
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  PAUSED
+  CANCELLED
+  EXPIRED
+}
+
+enum AiPromptMode {
+  PUBLIC_ASSISTANT
+  CMS_ASSISTANT
+  COURSE_TUTOR
+  TOOL
+  AGENT
+}
+
+enum AiConversationMode {
+  PUBLIC_ASSISTANT
+  CMS_ASSISTANT
+  COURSE_TUTOR
+  TOOL
+  AGENT
+}
+
+enum AiMessageRole {
+  USER
+  ASSISTANT
+  TOOL
+}
+
+enum KnowledgeSourceType {
+  CONTENT_ITEM
+  EXPERIENCE
+  CERTIFICATE
+  SKILL
+  COURSE_LESSON
+  MANUAL
+}
+
+enum ToolAccessTier {
+  FREE
+  REGISTERED
+  PREMIUM
+}
+
+enum ToolRunStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  BLOCKED
+}
+
+enum AnalyticsEventType {
+  PAGE_VIEW
+  CONTENT_VIEW
+  CLICK
+  DOWNLOAD
+  SHARE
+  CONTACT_SUBMIT
+  NEWSLETTER_SUBSCRIBE
+  TOOL_RUN
+  COURSE_VIEW
+  COURSE_START
+  COURSE_COMPLETE
+  PAYMENT_COMPLETED
+}
+
+enum ConsentType {
+  PRIVACY_POLICY
+  TERMS_OF_SERVICE
+  MARKETING_EMAILS
+  AI_PROCESSING
+  ANALYTICS
+}
+
+enum DataRequestType {
+  EXPORT
+  DELETE
+  RECTIFY
+}
+
+enum DataRequestStatus {
+  REQUESTED
+  VERIFYING
+  PROCESSING
+  COMPLETED
+  REJECTED
+  CANCELLED
+}
+
+enum AssetProvider {
+  SUPABASE
+  MUX
+  EXTERNAL
+}
+
+enum EmailOutboxStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+enum ExportJobType {
+  CV_PDF
+  TOOL_RESULT_PDF
+  COURSE_CERTIFICATE
+  USER_DATA_EXPORT
+  REPORT
+}
+
+enum ExportJobStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum WebhookProvider {
+  STRIPE
+  MUX
+  RESEND
+  SUPABASE
+  OTHER
+}
+
+enum WebhookStatus {
+  RECEIVED
+  PROCESSING
+  PROCESSED
+  FAILED
+  IGNORED
+}
+
+// ============================================================
+// IDENTITY, AUTHENTICATION & AUTHORIZATION
+// ============================================================
+model User {
+  id              BigInt     @id @default(autoincrement())
+  publicId        String     @unique @default(cuid())
+  authProviderId  String?    @unique
+  email           String     @unique
+  emailVerifiedAt DateTime?
+  passwordHash    String?
+  name            String
+  status          UserStatus @default(ACTIVE)
+  preferredLocale Locale     @default(EN)
+  timezone        String     @default("Asia/Amman")
+  avatarAssetId   BigInt?
+  lastLoginAt     DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  deletedAt       DateTime?
+
+  avatarAsset            MediaAsset?              @relation("UserAvatar", fields: [avatarAssetId], references: [id], onDelete: SetNull)
+  roles                  UserRole[]
+  sessions               UserSession[]
+  verificationTokens     EmailVerificationToken[]
+  passwordResetTokens    PasswordResetToken[]
+  createdContent         ContentItem[]            @relation("ContentCreatedBy")
+  updatedContent         ContentItem[]            @relation("ContentUpdatedBy")
+  uploadedAssets         MediaAsset[]             @relation("UploadedAssets")
+  assignedMessages       ContactMessage[]         @relation("AssignedContactMessages")
+  auditLogs              AuditLog[]
+  enrollments            Enrollment[]
+  payments               Payment[]
+  subscriptions          Subscription[]
+  aiPromptVersions       AiPromptVersion[]
+  aiConversations        AiConversation[]
+  toolUsages             ToolUsage[]
+  toolDrafts             ToolDraft[]
+  analyticsEvents        AnalyticsEvent[]
+  consentRecords         ConsentRecord[]
+  dataRequests           DataRequest[]
+  newsletterSubscription NewsletterSubscriber?
+  emailOutboxItems       EmailOutbox[]            @relation("EmailOutboxUser")
+  exportJobs             ExportJob[]
+  agentActionsDecided    AgentAction[]
+  agentAutonomyEdits     AgentAutonomySetting[]
+  socialPostsCreated     SocialPost[]
+
+  @@index([status])
+  @@index([deletedAt])
+  @@index([createdAt])
+}
+
+model Role {
+  id          BigInt   @id @default(autoincrement())
+  key         String   @unique
+  name        String
+  description String?
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       UserRole[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id          BigInt   @id @default(autoincrement())
+  key         String   @unique
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+
+  roles RolePermission[]
+}
+
+model UserRole {
+  userId     BigInt
+  roleId     BigInt
+  assignedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+}
+
+model RolePermission {
+  roleId       BigInt
+  permissionId BigInt
+  grantedAt    DateTime @default(now())
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+}
+
+model UserSession {
+  id               BigInt    @id @default(autoincrement())
+  publicId         String    @unique @default(cuid())
+  userId           BigInt
+  refreshTokenHash String    @unique
+  ipHash           String?
+  userAgent        String?
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  lastUsedAt       DateTime?
+  createdAt        DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@index([revokedAt])
+}
+
+model EmailVerificationToken {
+  id         BigInt    @id @default(autoincrement())
+  userId     BigInt
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model PasswordResetToken {
+  id         BigInt    @id @default(autoincrement())
+  userId     BigInt
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+// ============================================================
+// SITE, BRAND & PORTFOLIO CMS
+// Singleton rows must be seeded with id = 1.
+// ============================================================
+model SiteSettings {
+  id                BigInt   @id @default(1)
+  siteName          String
+  siteUrl           String
+  defaultLocale     Locale   @default(EN)
+  timezone          String   @default("Asia/Amman")
+  supportEmail      String?
+  supportPhone      String?
+  metaTitleAr       String?
+  metaTitleEn       String?
+  metaDescriptionAr String?  @db.Text
+  metaDescriptionEn String?  @db.Text
+  socialLinks       Json?
+  maintenanceMode   Boolean  @default(false)
+  logoAssetId       BigInt?
+  faviconAssetId    BigInt?
+  defaultOgAssetId  BigInt?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  logoAsset      MediaAsset? @relation("SiteLogo", fields: [logoAssetId], references: [id], onDelete: SetNull)
+  faviconAsset   MediaAsset? @relation("SiteFavicon", fields: [faviconAssetId], references: [id], onDelete: SetNull)
+  defaultOgAsset MediaAsset? @relation("SiteDefaultOg", fields: [defaultOgAssetId], references: [id], onDelete: SetNull)
+}
+
+model HeroSection {
+  id             BigInt   @id @default(1)
+  name           String
+  headlineAr     String
+  headlineEn     String
+  descriptionAr  String   @db.Text
+  descriptionEn  String   @db.Text
+  availabilityAr String?
+  availabilityEn String?
+  titleChips     Json?
+  stats          Json?
+  primaryCta     Json?
+  secondaryCta   Json?
+  profileAssetId BigInt?
+  cvAssetId      BigInt?
+  updatedAt      DateTime @updatedAt
+
+  profileAsset MediaAsset? @relation("HeroProfile", fields: [profileAssetId], references: [id], onDelete: SetNull)
+  cvAsset      MediaAsset? @relation("HeroCv", fields: [cvAssetId], references: [id], onDelete: SetNull)
+}
+
+model AboutSection {
+  id             BigInt   @id @default(1)
+  titleAr        String
+  titleEn        String
+  bodyAr         String   @db.Text
+  bodyEn         String   @db.Text
+  highlightCards Json?
+  updatedAt      DateTime @updatedAt
+}
+
+model Experience {
+  id            BigInt    @id @default(autoincrement())
+  publicId      String    @unique @default(cuid())
+  company       String
+  role          String
+  location      String?
+  descriptionAr String?   @db.Text
+  descriptionEn String?   @db.Text
+  startDate     DateTime
+  endDate       DateTime?
+  isCurrent     Boolean   @default(false)
+  companyUrl    String?
+  sortOrder     Int       @default(0)
+  isVisible     Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  knowledgeDocuments KnowledgeDocument[]
+
+  @@index([isVisible, sortOrder])
+  @@index([startDate])
+}
+
+model SkillCategory {
+  id        BigInt   @id @default(autoincrement())
+  key       String   @unique
+  nameAr    String
+  nameEn    String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  skills Skill[]
+
+  @@index([sortOrder])
+}
+
+model Skill {
+  id              BigInt   @id @default(autoincrement())
+  publicId        String   @unique @default(cuid())
+  categoryId      BigInt
+  name            String
+  proficiency     Int      @default(0)
+  yearsExperience Decimal? @db.Decimal(4, 1)
+  icon            String?
+  sortOrder       Int      @default(0)
+  isVisible       Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  category           SkillCategory       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  knowledgeDocuments KnowledgeDocument[]
+
+  @@unique([categoryId, name])
+  @@index([categoryId, isVisible, sortOrder])
+}
+
+model Certificate {
+  id            BigInt              @id @default(autoincrement())
+  publicId      String              @unique @default(cuid())
+  name          String
+  issuer        String
+  category      CertificateCategory @default(OTHER)
+  issuedAt      DateTime?
+  expiresAt     DateTime?
+  credentialId  String?
+  credentialUrl String?
+  assetId       BigInt?
+  sortOrder     Int                 @default(0)
+  isVisible     Boolean             @default(true)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  asset              MediaAsset?         @relation("CertificateAsset", fields: [assetId], references: [id], onDelete: SetNull)
+  knowledgeDocuments KnowledgeDocument[]
+
+  @@index([category])
+  @@index([issuer])
+  @@index([isVisible, sortOrder])
+}
+
+model ContactMessage {
+  id           BigInt        @id @default(autoincrement())
+  publicId     String        @unique @default(cuid())
+  name         String
+  email        String
+  phone        String?
+  company      String?
+  subject      String
+  message      String        @db.Text
+  status       MessageStatus @default(UNREAD)
+  assignedToId BigInt?
+  ipHash       String?
+  userAgent    String?
+  consentAt    DateTime?
+  readAt       DateTime?
+  archivedAt   DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  assignedTo User? @relation("AssignedContactMessages", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([assignedToId, status])
+  @@index([email])
+}
+
+model NewsletterSubscriber {
+  id                    BigInt           @id @default(autoincrement())
+  publicId              String           @unique @default(cuid())
+  userId                BigInt?          @unique
+  email                 String           @unique
+  name                  String?
+  locale                Locale           @default(EN)
+  status                NewsletterStatus @default(PENDING)
+  confirmationTokenHash String?          @unique
+  confirmedAt           DateTime?
+  unsubscribedAt        DateTime?
+  source                String?
+  outreachStatus        WaitlistOutreachStatus @default(NEW)
+  adminNotes            String?          @db.Text
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([outreachStatus])
+}
+
+/// Pre-launch waitlist survey answers (all fields optional, keyed by email).
+model WaitlistProfile {
+  id          BigInt   @id @default(autoincrement())
+  publicId    String   @unique @default(cuid())
+  email       String   @unique
+  name        String?
+  role        String? // Student, Job Seeker, Software Engineer, ...
+  interests   String[] @default([]) // AI Assistant, CV & Resume Tools, ...
+  primaryGoal String? // "What do you want Sanad Platform to help you with first?"
+  country     String?
+  challenge   String?  @db.Text // "What is the biggest challenge you're facing?"
+  locale      Locale   @default(EN)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([role])
+  @@index([country])
+  @@index([createdAt])
+}
+
+model MediaAsset {
+  id              BigInt        @id @default(autoincrement())
+  publicId        String        @unique @default(cuid())
+  provider        AssetProvider @default(SUPABASE)
+  bucket          String
+  path            String        @unique
+  originalName    String?
+  mimeType        String
+  sizeBytes       BigInt
+  width           Int?
+  height          Int?
+  durationSeconds Int?
+  checksum        String?
+  altTextAr       String?
+  altTextEn       String?
+  uploadedById    BigInt?
+  createdAt       DateTime      @default(now())
+  deletedAt       DateTime?
+
+  uploadedBy         User?               @relation("UploadedAssets", fields: [uploadedById], references: [id], onDelete: SetNull)
+  userAvatars        User[]              @relation("UserAvatar")
+  siteLogos          SiteSettings[]      @relation("SiteLogo")
+  siteFavicons       SiteSettings[]      @relation("SiteFavicon")
+  siteDefaultOgs     SiteSettings[]      @relation("SiteDefaultOg")
+  heroProfiles       HeroSection[]       @relation("HeroProfile")
+  heroCvs            HeroSection[]       @relation("HeroCv")
+  certificates       Certificate[]       @relation("CertificateAsset")
+  contentOgImages    ContentItem[]       @relation("ContentOgImage")
+  projectCovers      Project[]           @relation("ProjectCover")
+  projectScreenshots ProjectScreenshot[]
+  articleCovers      Article[]           @relation("ArticleCover")
+  researchPdfs       ResearchPaper[]     @relation("ResearchPdf")
+  researchCovers     ResearchPaper[]     @relation("ResearchCover")
+  speakingCovers     SpeakingEvent[]     @relation("SpeakingCover")
+  courseCovers       Course[]            @relation("CourseCover")
+  lessonVideos       Lesson[]            @relation("LessonVideo")
+  courseCertificates CourseCertificate[] @relation("CourseCertificateAsset")
+  exportResults      ExportJob[]         @relation("ExportResultAsset")
+
+  @@index([uploadedById])
+  @@index([mimeType])
+  @@index([deletedAt])
+}
+
+model FeatureFlag {
+  id          BigInt   @id @default(autoincrement())
+  key         String   @unique
+  description String?
+  enabled     Boolean  @default(false)
+  config      Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SeoRedirect {
+  id         BigInt   @id @default(autoincrement())
+  fromPath   String   @unique
+  toPath     String
+  statusCode Int      @default(301)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([isActive])
+}
+
+// ============================================================
+// UNIFIED CONTENT
+// ============================================================
+model ContentItem {
+  id               BigInt        @id @default(autoincrement())
+  publicId         String        @unique @default(cuid())
+  type             ContentType
+  slug             String        @unique
+  titleAr          String
+  titleEn          String
+  summaryAr        String?       @db.Text
+  summaryEn        String?       @db.Text
+  status           PublishStatus @default(DRAFT)
+  featured         Boolean       @default(false)
+  sortOrder        Int           @default(0)
+  seoTitleAr       String?
+  seoTitleEn       String?
+  seoDescriptionAr String?       @db.Text
+  seoDescriptionEn String?       @db.Text
+  canonicalUrl     String?
+  ogAssetId        BigInt?
+  publishedAt      DateTime?
+  deletedAt        DateTime?
+  createdById      BigInt?
+  updatedById      BigInt?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  ogAsset            MediaAsset?         @relation("ContentOgImage", fields: [ogAssetId], references: [id], onDelete: SetNull)
+  createdBy          User?               @relation("ContentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy          User?               @relation("ContentUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  project            Project?
+  article            Article?
+  researchPaper      ResearchPaper?
+  speakingEvent      SpeakingEvent?
+  course             Course?
+  tags               ContentTag[]
+  analyticsEvents    AnalyticsEvent[]
+  knowledgeDocuments KnowledgeDocument[]
+  socialPosts        SocialPost[]
+
+  @@index([type, status, publishedAt])
+  @@index([featured, status, sortOrder])
+  @@index([deletedAt])
+  @@index([createdById])
+}
+
+model Tag {
+  id        BigInt   @id @default(autoincrement())
+  key       String   @unique
+  nameAr    String
+  nameEn    String
+  createdAt DateTime @default(now())
+
+  contentItems ContentTag[]
+}
+
+model ContentTag {
+  contentItemId BigInt
+  tagId         BigInt
+
+  contentItem ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  tag         Tag         @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([contentItemId, tagId])
+  @@index([tagId])
+}
+
+model Project {
+  contentItemId BigInt    @id
+  category      String?
+  badge         String?
+  techStack     Json?
+  repositoryUrl String?
+  liveUrl       String?
+  clientName    String?
+  challengeAr   String?   @db.Text
+  challengeEn   String?   @db.Text
+  solutionAr    String?   @db.Text
+  solutionEn    String?   @db.Text
+  impactAr      String?   @db.Text
+  impactEn      String?   @db.Text
+  startedAt     DateTime?
+  completedAt   DateTime?
+  coverAssetId  BigInt?
+
+  contentItem ContentItem         @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  coverAsset  MediaAsset?         @relation("ProjectCover", fields: [coverAssetId], references: [id], onDelete: SetNull)
+  screenshots ProjectScreenshot[]
+}
+
+model ProjectScreenshot {
+  id        BigInt  @id @default(autoincrement())
+  projectId BigInt
+  assetId   BigInt
+  caption   String?
+  sortOrder Int     @default(0)
+
+  project Project    @relation(fields: [projectId], references: [contentItemId], onDelete: Cascade)
+  asset   MediaAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, sortOrder])
+  @@index([assetId])
+}
+
+model Article {
+  contentItemId  BigInt  @id
+  bodyMdxAr      String  @db.Text
+  bodyMdxEn      String  @db.Text
+  readingMinutes Int?
+  coverAssetId   BigInt?
+
+  contentItem ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  coverAsset  MediaAsset? @relation("ArticleCover", fields: [coverAssetId], references: [id], onDelete: SetNull)
+}
+
+model ResearchPaper {
+  contentItemId BigInt    @id
+  abstractAr    String    @db.Text
+  abstractEn    String    @db.Text
+  methodologyAr String?   @db.Text
+  methodologyEn String?   @db.Text
+  findingsAr    String?   @db.Text
+  findingsEn    String?   @db.Text
+  publication   String?
+  doi           String?
+  publishedOn   DateTime?
+  pdfAssetId    BigInt?
+  coverAssetId  BigInt?
+
+  contentItem ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  pdfAsset    MediaAsset? @relation("ResearchPdf", fields: [pdfAssetId], references: [id], onDelete: SetNull)
+  coverAsset  MediaAsset? @relation("ResearchCover", fields: [coverAssetId], references: [id], onDelete: SetNull)
+}
+
+model SpeakingEvent {
+  contentItemId BigInt    @id
+  eventType     EventType
+  eventDate     DateTime
+  endDate       DateTime?
+  location      String?
+  organizer     String?
+  eventUrl      String?
+  recordingUrl  String?
+  coverAssetId  BigInt?
+
+  contentItem ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  coverAsset  MediaAsset? @relation("SpeakingCover", fields: [coverAssetId], references: [id], onDelete: SetNull)
+
+  @@index([eventDate])
+}
+
+// ============================================================
+// COURSES & LEARNING
+// ============================================================
+model Course {
+  contentItemId   BigInt         @id
+  level           CourseLevel
+  language        CourseLanguage
+  priceMinor      BigInt         @default(0)
+  currency        String         @default("USD")
+  durationMinutes Int?
+  enrollmentLimit Int?
+  coverAssetId    BigInt?
+
+  contentItem     ContentItem      @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  coverAsset      MediaAsset?      @relation("CourseCover", fields: [coverAssetId], references: [id], onDelete: SetNull)
+  sections        CourseSection[]
+  enrollments     Enrollment[]
+  analyticsEvents AnalyticsEvent[]
+
+  @@index([level, language])
+}
+
+model CourseSection {
+  id            BigInt   @id @default(autoincrement())
+  publicId      String   @unique @default(cuid())
+  courseId      BigInt
+  titleAr       String
+  titleEn       String
+  descriptionAr String?  @db.Text
+  descriptionEn String?  @db.Text
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  course  Course   @relation(fields: [courseId], references: [contentItemId], onDelete: Cascade)
+  lessons Lesson[]
+
+  @@unique([courseId, sortOrder])
+  @@index([courseId])
+}
+
+model Lesson {
+  id              BigInt     @id @default(autoincrement())
+  publicId        String     @unique @default(cuid())
+  sectionId       BigInt
+  slug            String
+  type            LessonType
+  titleAr         String
+  titleEn         String
+  descriptionAr   String?    @db.Text
+  descriptionEn   String?    @db.Text
+  contentAr       String?    @db.Text
+  contentEn       String?    @db.Text
+  videoAssetId    BigInt?
+  durationSeconds Int?
+  sortOrder       Int        @default(0)
+  isPreview       Boolean    @default(false)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  section            CourseSection       @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  videoAsset         MediaAsset?         @relation("LessonVideo", fields: [videoAssetId], references: [id], onDelete: SetNull)
+  progress           LessonProgress[]
+  quizQuestions      QuizQuestion[]
+  quizAttempts       QuizAttempt[]
+  tutorConversations AiConversation[]
+  knowledgeDocuments KnowledgeDocument[]
+
+  @@unique([sectionId, slug])
+  @@unique([sectionId, sortOrder])
+  @@index([sectionId])
+}
+
+model QuizQuestion {
+  id            BigInt           @id @default(autoincrement())
+  publicId      String           @unique @default(cuid())
+  lessonId      BigInt
+  type          QuizQuestionType
+  promptAr      String           @db.Text
+  promptEn      String           @db.Text
+  explanationAr String?          @db.Text
+  explanationEn String?          @db.Text
+  points        Int              @default(1)
+  sortOrder     Int              @default(0)
+
+  lesson  Lesson              @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  options QuizOption[]
+  answers QuizAttemptAnswer[]
+
+  @@unique([lessonId, sortOrder])
+  @@index([lessonId])
+}
+
+model QuizOption {
+  id         BigInt  @id @default(autoincrement())
+  publicId   String  @unique @default(cuid())
+  questionId BigInt
+  textAr     String
+  textEn     String
+  isCorrect  Boolean @default(false)
+  sortOrder  Int     @default(0)
+
+  question   QuizQuestion              @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  selections QuizAttemptAnswerOption[]
+
+  @@unique([questionId, sortOrder])
+  @@index([questionId])
+}
+
+model Enrollment {
+  id          BigInt           @id @default(autoincrement())
+  publicId    String           @unique @default(cuid())
+  userId      BigInt
+  courseId    BigInt
+  status      EnrollmentStatus @default(ACTIVE)
+  enrolledAt  DateTime         @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+  cancelledAt DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course       Course             @relation(fields: [courseId], references: [contentItemId], onDelete: Cascade)
+  progress     LessonProgress[]
+  quizAttempts QuizAttempt[]
+  payments     Payment[]
+  certificate  CourseCertificate?
+
+  @@unique([userId, courseId])
+  @@index([courseId, status])
+  @@index([userId, status])
+}
+
+model LessonProgress {
+  id                  BigInt         @id @default(autoincrement())
+  enrollmentId        BigInt
+  lessonId            BigInt
+  status              ProgressStatus @default(NOT_STARTED)
+  progressPercent     Int            @default(0)
+  lastPositionSeconds Int?
+  startedAt           DateTime?
+  completedAt         DateTime?
+  updatedAt           DateTime       @updatedAt
+
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  lesson     Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([enrollmentId, lessonId])
+  @@index([lessonId])
+}
+
+model QuizAttempt {
+  id            BigInt    @id @default(autoincrement())
+  publicId      String    @unique @default(cuid())
+  enrollmentId  BigInt
+  lessonId      BigInt
+  attemptNumber Int
+  score         Decimal?  @db.Decimal(5, 2)
+  maxScore      Decimal?  @db.Decimal(5, 2)
+  passed        Boolean?
+  startedAt     DateTime  @default(now())
+  submittedAt   DateTime?
+
+  enrollment Enrollment          @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  lesson     Lesson              @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  answers    QuizAttemptAnswer[]
+
+  @@unique([enrollmentId, lessonId, attemptNumber])
+  @@index([lessonId])
+}
+
+model QuizAttemptAnswer {
+  id            BigInt   @id @default(autoincrement())
+  attemptId     BigInt
+  questionId    BigInt
+  textAnswer    String?  @db.Text
+  isCorrect     Boolean?
+  awardedPoints Decimal? @db.Decimal(5, 2)
+
+  attempt         QuizAttempt               @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question        QuizQuestion              @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  selectedOptions QuizAttemptAnswerOption[]
+
+  @@unique([attemptId, questionId])
+  @@index([questionId])
+}
+
+model QuizAttemptAnswerOption {
+  answerId BigInt
+  optionId BigInt
+
+  answer QuizAttemptAnswer @relation(fields: [answerId], references: [id], onDelete: Cascade)
+  option QuizOption        @relation(fields: [optionId], references: [id], onDelete: Restrict)
+
+  @@id([answerId, optionId])
+  @@index([optionId])
+}
+
+model CourseCertificate {
+  id                BigInt    @id @default(autoincrement())
+  publicId          String    @unique @default(cuid())
+  enrollmentId      BigInt    @unique
+  certificateNumber String    @unique
+  assetId           BigInt?
+  issuedAt          DateTime  @default(now())
+  revokedAt         DateTime?
+
+  enrollment Enrollment  @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  asset      MediaAsset? @relation("CourseCertificateAsset", fields: [assetId], references: [id], onDelete: SetNull)
+
+  @@index([issuedAt])
+}
+
+// ============================================================
+// PLANS, SUBSCRIPTIONS & PAYMENTS
+// ============================================================
+model Plan {
+  id            BigInt          @id @default(autoincrement())
+  publicId      String          @unique @default(cuid())
+  key           String          @unique
+  nameAr        String
+  nameEn        String
+  descriptionAr String?         @db.Text
+  descriptionEn String?         @db.Text
+  interval      BillingInterval
+  priceMinor    BigInt
+  currency      String          @default("USD")
+  features      Json?
+  limits        Json?
+  isActive      Boolean         @default(true)
+  sortOrder     Int             @default(0)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  subscriptions Subscription[]
+
+  @@index([isActive, sortOrder])
+}
+
+model Subscription {
+  id                     BigInt             @id @default(autoincrement())
+  publicId               String             @unique @default(cuid())
+  userId                 BigInt
+  planId                 BigInt
+  provider               PaymentProvider
+  providerCustomerId     String?
+  providerSubscriptionId String?            @unique
+  status                 SubscriptionStatus @default(ACTIVE)
+  currentPeriodStart     DateTime
+  currentPeriodEnd       DateTime?
+  trialEndsAt            DateTime?
+  cancelAtPeriodEnd      Boolean            @default(false)
+  cancelledAt            DateTime?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan     Plan      @relation(fields: [planId], references: [id], onDelete: Restrict)
+  payments Payment[]
+
+  @@index([userId, status])
+  @@index([planId, status])
+}
+
+model Payment {
+  id             BigInt          @id @default(autoincrement())
+  publicId       String          @unique @default(cuid())
+  userId         BigInt
+  enrollmentId   BigInt?
+  subscriptionId BigInt?
+  amountMinor    BigInt
+  refundedMinor  BigInt          @default(0)
+  currency       String
+  provider       PaymentProvider
+  providerRef    String
+  status         PaymentStatus   @default(PENDING)
+  failureCode    String?
+  failureMessage String?         @db.Text
+  metadata       Json?
+  paidAt         DateTime?
+  refundedAt     DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  enrollment   Enrollment?   @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@unique([provider, providerRef])
+  @@index([userId, status])
+  @@index([enrollmentId])
+  @@index([subscriptionId])
+  @@index([createdAt])
+}
+
+// ============================================================
+// SANAD AI, KNOWLEDGE & AI TOOLS
+// ============================================================
+model ToolDefinition {
+  id                   BigInt         @id @default(autoincrement())
+  publicId             String         @unique @default(cuid())
+  key                  String         @unique
+  slug                 String         @unique
+  nameAr               String
+  nameEn               String
+  descriptionAr        String?        @db.Text
+  descriptionEn        String?        @db.Text
+  minimumTier          ToolAccessTier @default(FREE)
+  anonymousDailyLimit  Int            @default(3)
+  registeredDailyLimit Int            @default(10)
+  isActive             Boolean        @default(true)
+  config               Json?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+
+  prompts         AiPrompt[]
+  conversations   AiConversation[]
+  usages          ToolUsage[]
+  drafts          ToolDraft[]
+  analyticsEvents AnalyticsEvent[]
+
+  @@index([isActive])
+}
+
+model AiPrompt {
+  id          BigInt       @id @default(autoincrement())
+  publicId    String       @unique @default(cuid())
+  key         String
+  mode        AiPromptMode
+  toolId      BigInt?
+  description String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  tool     ToolDefinition?   @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  versions AiPromptVersion[]
+
+  @@unique([key, mode])
+  @@index([toolId])
+}
+
+model AiPromptVersion {
+  id          BigInt   @id @default(autoincrement())
+  promptId    BigInt
+  version     Int
+  content     String   @db.Text
+  isActive    Boolean  @default(false)
+  changeNote  String?
+  createdById BigInt?
+  createdAt   DateTime @default(now())
+
+  prompt        AiPrompt         @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  createdBy     User?            @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  conversations AiConversation[]
+
+  @@unique([promptId, version])
+  @@index([promptId, isActive])
+  @@index([createdById])
+}
+
+model AiConversation {
+  id               BigInt             @id @default(autoincrement())
+  publicId         String             @unique @default(cuid())
+  userId           BigInt?
+  anonymousKeyHash String?
+  mode             AiConversationMode
+  locale           Locale             @default(EN)
+  promptVersionId  BigInt?
+  toolId           BigInt?
+  lessonId         BigInt?
+  title            String?
+  startedAt        DateTime           @default(now())
+  lastMessageAt    DateTime           @default(now())
+  archivedAt       DateTime?
+
+  user          User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  promptVersion AiPromptVersion? @relation(fields: [promptVersionId], references: [id], onDelete: SetNull)
+  tool          ToolDefinition?  @relation(fields: [toolId], references: [id], onDelete: SetNull)
+  lesson        Lesson?          @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  messages      AiMessage[]
+  toolUsages    ToolUsage[]
+  agentActions  AgentAction[]
+
+  @@index([userId, startedAt])
+  @@index([anonymousKeyHash, startedAt])
+  @@index([toolId, startedAt])
+  @@index([lessonId])
+}
+
+model AiMessage {
+  id             BigInt        @id @default(autoincrement())
+  publicId       String        @unique @default(cuid())
+  conversationId BigInt
+  role           AiMessageRole
+  content        String        @db.Text
+  provider       String?
+  model          String?
+  tokenInput     Int?
+  tokenOutput    Int?
+  costMinor      BigInt?
+  latencyMs      Int?
+  metadata       Json?
+  createdAt      DateTime      @default(now())
+
+  conversation AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}
+
+model KnowledgeDocument {
+  id            BigInt              @id @default(autoincrement())
+  publicId      String              @unique @default(cuid())
+  sourceType    KnowledgeSourceType
+  contentItemId BigInt?
+  experienceId  BigInt?
+  certificateId BigInt?
+  skillId       BigInt?
+  lessonId      BigInt?
+  title         String
+  locale        Locale
+  contentHash   String
+  publishedOnly Boolean             @default(true)
+  indexedAt     DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  contentItem ContentItem?     @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  experience  Experience?      @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  certificate Certificate?     @relation(fields: [certificateId], references: [id], onDelete: Cascade)
+  skill       Skill?           @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  lesson      Lesson?          @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  chunks      KnowledgeChunk[]
+
+  @@unique([sourceType, contentItemId, experienceId, certificateId, skillId, lessonId, locale, contentHash])
+  @@index([contentItemId])
+  @@index([experienceId])
+  @@index([certificateId])
+  @@index([skillId])
+  @@index([lessonId])
+  @@index([indexedAt])
+}
+
+model KnowledgeChunk {
+  id             BigInt  @id @default(autoincrement())
+  documentId     BigInt
+  chunkIndex     Int
+  content        String  @db.Text
+  tokenCount     Int?
+  embeddingRef   String?
+  embeddingModel String?
+  metadata       Json?
+
+  document KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, chunkIndex])
+  @@index([embeddingRef])
+}
+
+model ToolUsage {
+  id               BigInt        @id @default(autoincrement())
+  publicId         String        @unique @default(cuid())
+  toolId           BigInt
+  userId           BigInt?
+  anonymousKeyHash String?
+  conversationId   BigInt?
+  status           ToolRunStatus @default(QUEUED)
+  inputHash        String?
+  tokenInput       Int?
+  tokenOutput      Int?
+  costMinor        BigInt?
+  latencyMs        Int?
+  errorCode        String?
+  startedAt        DateTime      @default(now())
+  completedAt      DateTime?
+
+  tool         ToolDefinition  @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  user         User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  conversation AiConversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+
+  @@index([toolId, startedAt])
+  @@index([userId, startedAt])
+  @@index([anonymousKeyHash, startedAt])
+  @@index([status])
+}
+
+model ToolDraft {
+  id        BigInt    @id @default(autoincrement())
+  publicId  String    @unique @default(cuid())
+  toolId    BigInt
+  userId    BigInt
+  title     String
+  input     Json
+  output    Json
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  tool ToolDefinition @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  user User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, updatedAt])
+  @@index([toolId])
+  @@index([deletedAt])
+}
+
+// ============================================================
+// ANALYTICS
+// ============================================================
+model AnalyticsEvent {
+  id            BigInt             @id @default(autoincrement())
+  userId        BigInt?
+  contentItemId BigInt?
+  courseId      BigInt?
+  toolId        BigInt?
+  eventType     AnalyticsEventType
+  pagePath      String?
+  sessionHash   String?
+  ipHash        String?
+  countryCode   String?
+  referrer      String?
+  userAgent     String?
+  metadata      Json?
+  occurredAt    DateTime           @default(now())
+
+  user        User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  contentItem ContentItem?    @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  course      Course?         @relation(fields: [courseId], references: [contentItemId], onDelete: Cascade)
+  tool        ToolDefinition? @relation(fields: [toolId], references: [id], onDelete: Cascade)
+
+  @@index([eventType, occurredAt])
+  @@index([contentItemId, eventType, occurredAt])
+  @@index([courseId, eventType, occurredAt])
+  @@index([toolId, eventType, occurredAt])
+  @@index([userId, occurredAt])
+  @@index([sessionHash, occurredAt])
+}
+
+// ============================================================
+// PRIVACY, AUDIT & DATA GOVERNANCE
+// ============================================================
+model ConsentRecord {
+  id               BigInt      @id @default(autoincrement())
+  userId           BigInt?
+  anonymousKeyHash String?
+  type             ConsentType
+  granted          Boolean
+  policyVersion    String
+  ipHash           String?
+  userAgent        String?
+  createdAt        DateTime    @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, type, createdAt])
+  @@index([anonymousKeyHash, type, createdAt])
+}
+
+model DataRequest {
+  id            BigInt            @id @default(autoincrement())
+  publicId      String            @unique @default(cuid())
+  userId        BigInt
+  type          DataRequestType
+  status        DataRequestStatus @default(REQUESTED)
+  reason        String?           @db.Text
+  exportJobId   BigInt?           @unique
+  requestedAt   DateTime          @default(now())
+  verifiedAt    DateTime?
+  completedAt   DateTime?
+  rejectedAt    DateTime?
+  rejectionNote String?           @db.Text
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exportJob ExportJob? @relation(fields: [exportJobId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@index([type, status, requestedAt])
+}
+
+model AuditLog {
+  id          BigInt   @id @default(autoincrement())
+  actorUserId BigInt?
+  action      String
+  entityType  String
+  entityId    String?
+  requestId   String?
+  ipHash      String?
+  userAgent   String?
+  before      Json?
+  after       Json?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  actor User? @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([actorUserId, createdAt])
+  @@index([entityType, entityId])
+  @@index([requestId])
+}
+
+// ============================================================
+// ASYNC OPERATIONS, EMAIL, EXPORTS & WEBHOOKS
+// ============================================================
+model EmailOutbox {
+  id            BigInt            @id @default(autoincrement())
+  publicId      String            @unique @default(cuid())
+  relatedUserId BigInt?
+  status        EmailOutboxStatus @default(PENDING)
+  to            Json
+  cc            Json?
+  bcc           Json?
+  subject       String
+  templateKey   String?
+  payload       Json?
+  htmlBody      String?           @db.Text
+  textBody      String?           @db.Text
+  attempts      Int               @default(0)
+  maxAttempts   Int               @default(5)
+  nextAttemptAt DateTime?
+  lockedAt      DateTime?
+  sentAt        DateTime?
+  lastError     String?           @db.Text
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  relatedUser User? @relation("EmailOutboxUser", fields: [relatedUserId], references: [id], onDelete: SetNull)
+
+  @@index([status, nextAttemptAt])
+  @@index([relatedUserId, createdAt])
+}
+
+model ExportJob {
+  id            BigInt          @id @default(autoincrement())
+  publicId      String          @unique @default(cuid())
+  userId        BigInt?
+  type          ExportJobType
+  status        ExportJobStatus @default(QUEUED)
+  sourceType    String?
+  sourceId      BigInt?
+  input         Json?
+  resultAssetId BigInt?
+  attempts      Int             @default(0)
+  maxAttempts   Int             @default(3)
+  progress      Int             @default(0)
+  startedAt     DateTime?
+  completedAt   DateTime?
+  failedAt      DateTime?
+  lastError     String?         @db.Text
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  user        User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  resultAsset MediaAsset?  @relation("ExportResultAsset", fields: [resultAssetId], references: [id], onDelete: SetNull)
+  dataRequest DataRequest?
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+}
+
+model WebhookEvent {
+  id              BigInt          @id @default(autoincrement())
+  provider        WebhookProvider
+  externalEventId String
+  eventType       String
+  status          WebhookStatus   @default(RECEIVED)
+  signatureValid  Boolean?
+  payload         Json
+  attempts        Int             @default(0)
+  receivedAt      DateTime        @default(now())
+  processedAt     DateTime?
+  lastError       String?         @db.Text
+
+  @@unique([provider, externalEventId])
+  @@index([status, receivedAt])
+  @@index([provider, eventType, receivedAt])
+}
+
+// ============================================================
+// MULTI-AGENT ORCHESTRATION (v5.0 addition)
+// ============================================================
+
+enum AgentKey {
+  ORCHESTRATOR
+  CONTENT
+  CV_BUILDER
+  RESEARCH
+  SOCIAL_MEDIA
+}
+
+enum AgentActionType {
+  DRAFT
+  EDIT
+  PUBLISH
+  DELETE
+  KNOWLEDGE
+}
+
+enum AutonomyMode {
+  AUTONOMOUS
+  CONFIRM_REQUIRED
+  DISABLED
+}
+
+enum AgentActionStatus {
+  PENDING
+  AUTO_EXECUTED
+  APPROVED
+  REJECTED
+  FAILED
+}
+
+model AgentAutonomySetting {
+  id          BigInt          @id @default(autoincrement())
+  actionType  AgentActionType @unique
+  mode        AutonomyMode    @default(CONFIRM_REQUIRED)
+  updatedById BigInt?
+  updatedAt   DateTime        @updatedAt
+
+  updatedBy User? @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+}
+
+model AgentAction {
+  id              BigInt            @id @default(autoincrement())
+  publicId        String            @unique @default(cuid())
+  agentKey        AgentKey
+  actionType      AgentActionType
+  conversationId  BigInt?
+  targetTable     String
+  targetId        String?
+  beforeState     Json?
+  afterState      Json
+  reasoning       String?           @db.Text
+  autonomyMode    AutonomyMode
+  status          AgentActionStatus @default(PENDING)
+  decidedById     BigInt?
+  rejectionReason String?           @db.Text
+  proposedAt      DateTime          @default(now())
+  decidedAt       DateTime?
+  executedAt      DateTime?
+  failureMessage  String?           @db.Text
+
+  conversation AiConversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  decidedBy    User?           @relation(fields: [decidedById], references: [id], onDelete: SetNull)
+
+  @@index([status, proposedAt])
+  @@index([agentKey, actionType])
+  @@index([targetTable, targetId])
+}
+
+model SocialPost {
+  id                  BigInt        @id @default(autoincrement())
+  publicId            String        @unique @default(cuid())
+  sourceContentItemId BigInt?
+  platform            String
+  bodyEn              String        @db.Text
+  bodyAr              String?       @db.Text
+  status              PublishStatus @default(DRAFT)
+  scheduledFor        DateTime?
+  postedAt            DateTime?
+  externalUrl         String?
+  createdById         BigInt?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  sourceContentItem ContentItem? @relation(fields: [sourceContentItemId], references: [id], onDelete: SetNull)
+  createdBy         User?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([status, scheduledFor])
+}
