@@ -118,19 +118,19 @@ export class WaitlistAdminService {
       en,
       ar,
       series,
-      countries: countries.map((c) => ({ country: c.country as string, count: c._count._all })),
+      countries: countries.map((c: any) => ({ country: c.country as string, count: c._count._all })),
       latest,
       survey: {
         responses: surveyCount,
-        roles: roles.map((r) => ({ role: r.role as string, count: r._count._all })),
-        goals: goals.map((g) => ({ goal: g.primaryGoal as string, count: g._count._all })),
+        roles: roles.map((r: any) => ({ role: r.role as string, count: r._count._all })),
+        goals: goals.map((g: any) => ({ goal: g.primaryGoal as string, count: g._count._all })),
         interests,
       },
     };
   }
 
   async list(q: WaitlistListQuery) {
-    const where: Prisma.NewsletterSubscriberWhereInput = {};
+    const where: Record<string, any> = {};
     if (q.locale) where.locale = q.locale;
     if (q.status && (OUTREACH_STATUSES as readonly string[]).includes(q.status)) {
       where.outreachStatus = q.status as OutreachStatus;
@@ -168,8 +168,8 @@ export class WaitlistAdminService {
     ]);
 
     // Attach survey answers (WaitlistProfile) for the page's rows in one query.
-    const profiles = await this.prisma.waitlistProfile.findMany({
-      where: { email: { in: rows.map((r) => r.email) } },
+    const profiles = (await this.prisma.waitlistProfile.findMany({
+      where: { email: { in: rows.map((r: any) => r.email) } },
       select: {
         email: true,
         name: true,
@@ -179,14 +179,22 @@ export class WaitlistAdminService {
         country: true,
         challenge: true,
       },
-    });
+    })) as Array<{
+      email: string;
+      name: string | null;
+      role: string | null;
+      interests: string[];
+      primaryGoal: string | null;
+      country: string | null;
+      challenge: string | null;
+    }>;
     const profileByEmail = new Map(profiles.map((p) => [p.email, p]));
 
     return {
       total,
       page: q.page,
       pageSize: q.pageSize,
-      rows: rows.map((r) => {
+      rows: rows.map((r: any) => {
         const p = profileByEmail.get(r.email);
         return {
           id: r.publicId,
